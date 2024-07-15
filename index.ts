@@ -8,20 +8,23 @@ const app: Express = express();
 app.use(bodyParser.json());
 
 const nixShells: Record<string, string> = {
+  // all paths should be relative to the root of the project
   javascript: "nodejs-shell.nix",
   rust: "rust-shell.nix",
-  python: "/path/to/python-shell.nix",
-  cpp: "/path/to/cpp-shell.nix",
+  python: "python-shell.nix",
+  cpp: "cpp-shell.nix",
 };
 
 app.post("/execute", async (req: Request, res: Response) => {
   const { language, code } = req.body;
 
+  // Check if the language is supported
   if (!Object.keys(nixShells).includes(language)) {
     return res.status(400).send("Unsupported language");
   }
 
   const scriptDir = "/tmp/scripts";
+  // Create the script directory if it doesn't exist
   try {
     await fs.mkdir(scriptDir, { recursive: true });
   } catch (err) {
@@ -35,6 +38,7 @@ app.post("/execute", async (req: Request, res: Response) => {
     return res.status(500).send(`Error writing script file: ${err}`);
   }
 
+  // Execute the script in a nix-shell
   const nixShell = nixShells[language];
   let command = "";
 
@@ -55,6 +59,7 @@ app.post("/execute", async (req: Request, res: Response) => {
       return res.status(400).send("Unsupported language");
   }
 
+  // Execute the script
   exec(command, { timeout: 10000 }, async (error, stdout, stderr) => {
     try {
       await fs.unlink(scriptPath);
